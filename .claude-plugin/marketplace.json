@@ -1,6 +1,9 @@
 {
   "name": "agent-workflow-kit",
-  "owner": { "name": "agent-workflow-kit maintainers" },
+  "description": "The agent-workflow plugin: an owner plus a lead Claude Code session running parallel agent lanes behind an independent review gate.",
+  "owner": {
+    "name": "agent-workflow-kit maintainers"
+  },
   "plugins": [
     {
       "name": "agent-workflow",

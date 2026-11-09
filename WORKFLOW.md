@@ -17,19 +17,25 @@ learned from something that went wrong. Keep the reasons when you adapt the rule
 
 ```
 ~/projects/<project>/            plain folder, NOT a git repo; sessions start here
-├── CLAUDE.md                    lead-session instructions (from template/CLAUDE.md)
-├── .worktrees/                  optional: shared worktree area
+├── CLAUDE.md                    lead-session instructions
+├── .claude/                     settings.local.json (permissions), optional local skills
 ├── <project>-planning/          private git repo: the plan and the hand-off pages
 │   ├── BACKLOG.md               source of truth: milestones, tracks, lanes, Q-ids
 │   ├── NEXT-SESSION.md          temporary agenda: where the last session stopped
+│   ├── WORKFLOW.md              this playbook
+│   ├── pages/                   question page and QA checklist templates
 │   ├── *.html                   question pages, QA checklists, prototypes, explainers
 │   └── qa/                      scripts the owner runs to test locally
-├── <project>/                   code repo (AGENTS.md, docs/adr, docs/map)
+├── <project>/                   code repo: AGENTS.md, docs/adr, docs/map,
+│   └── .worktrees/              one worktree per agent (git-ignored)
 └── <project>-web/ ...           more code repos, siblings
 ```
 
 - **Sessions start in the umbrella** so one session reaches every repo. Git runs only inside
   a repo.
+- **The umbrella `CLAUDE.md` is in no repo**, so cloud sessions never see it. Everything a
+  cloud session needs is in the planning repo's README and each repo's `AGENTS.md`. Keep a
+  copy of the umbrella file in the planning repo if you want it versioned.
 - **The planning repo is on GitHub**, so a cloud session started from a phone sees the same
   plan. Anything a cloud session needs must live in GitHub, not on your machine (memory,
   notes and secrets stay local).
@@ -40,7 +46,7 @@ learned from something that went wrong. Keep the reasons when you adapt the rule
 
 ## 2. The backlog: tracks, lanes and Q-ids
 
-`BACKLOG.md` has fixed sections (see `template/planning/BACKLOG.md`):
+`BACKLOG.md` has fixed sections (the installer creates them):
 
 | Section | What it holds |
 |---|---|
@@ -83,6 +89,9 @@ becomes an issue, so any later session, local or cloud, can pick it up.
 *Why:* session reports are not a persistent record; the next session never reads them.
 
 ## 3. The session loop
+
+Skill names below are the plugin's (`/agent-workflow:...`); with `install.sh --local-skills`
+they are the same without the prefix (`/session-start`).
 
 **Start** (`/agent-workflow:session-start`)
 1. Read `NEXT-SESSION.md` and `BACKLOG.md`, check open PRs and agent-filed issues.
@@ -154,18 +163,41 @@ Every agent change goes through the same pipe (written into each repo's `AGENTS.
    batch them.
 5. **Confirm the jobs ran and passed**, not just that nothing failed. *Why:* a run where
    every job showed `skipping` looked green. Check `gh run view <id> --json jobs`.
+   `gh pr checks` may show the skipped draft run's row for a job that passed in the ready
+   run, so look at the ready run itself before concluding.
 6. Squash-merge (agents merge themselves on APPROVE + real green CI, if the owner granted
    it once, as a Q-id). Merge serially; update the next PR from `main` before marking it
    ready. *Why:* hot files (docs indexes) made each following PR conflict.
 
 Nit-only fixes after an APPROVE need no second review.
 
+### CI that runs once
+
+Two settings make "draft is free, ready runs CI once" work. Both are needed. A ready
+copy is in the kit at `template/snippets/ci-draft-gate.yml`.
+
+```yaml
+on:
+  pull_request:
+    # The default types do not include ready_for_review: without it, `gh pr ready`
+    # starts nothing and the PR shows only skipped draft runs.
+    types: [opened, synchronize, reopened, ready_for_review]
+concurrency:
+  # The draft state is part of the key, so a skipped draft run cannot cancel the
+  # real run that starts on ready.
+  group: ci-${{ github.event.pull_request.number }}-${{ github.event.pull_request.draft }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: github.event.pull_request.draft == false
+```
+
 ## 5. Hand-offs to the owner
 
 The owner is frontend-light and answers from the page alone, without the files or the
 session's context. Every hand-off is built for that.
 
-**Question pages** (`/agent-workflow:ask-questions`, template in `template/planning/pages/`)
+**Question pages** (`/agent-workflow:ask-questions`, template in the planning repo's `pages/`)
 - Each question has its **own 2 to 4 sentence explainer**: what the thing is, where it
   lives, what the problem is, why it matters. Then options with one-line trade-offs.
   *Why:* a condensed page with titles and options only left questions unanswerable.
@@ -196,7 +228,9 @@ one-line `! <command>`. After the owner runs it, the agent verifies.
 - **Own test resources.** Agents use their own test database names and ports; a shared
   e2e database picked up another branch's migration.
 - **File what you find.** Bugs, security gaps and doc drift outside the task become issues
-  (search first, verify on `main`, label `found-by-agent`).
+  (search first, verify on `main`, label `found-by-agent`). The `.github/ISSUE_TEMPLATE`
+  forms only work in the browser: from the CLI, write the body with the same headings and
+  pass the labels yourself (`gh issue create --title ... --body-file ... --label bug,found-by-agent`).
 - **Dependency cooldown.** Only versions public for 14+ days, unless you are on a high or
   critical advisory and the fix is younger. Fresh releases are where supply-chain attacks
   land.
@@ -213,7 +247,7 @@ one-line `! <command>`. After the owner runs it, the agent verifies.
 - For real overnight work, use a **scheduled cloud routine** (the `/schedule` skill).
   Verify where an agent actually ran: an `isolation: "remote"` launch has silently run on
   the local machine, and the work vanished with it.
-- Cloud environments may lack your SDKs (for example no dotnet). Tell cloud agents to rely
+- Cloud environments may lack your SDKs and toolchains. Tell cloud agents to rely
   on CI or install the SDK first.
 - GitHub Actions minutes cost money: CI once per reviewed change, no runs on `main`, don't
   re-run casually.

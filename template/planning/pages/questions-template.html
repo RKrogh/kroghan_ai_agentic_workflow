@@ -3,18 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{PROJECT}} questions, {{DATE}}</title>
+<title>PROJECT questions, YYYY-MM-DD</title>
 <!--
   Question page template (agent-workflow-kit).
-  Fill PAGE and QUESTIONS in the script below; leave the rest alone.
+  Copy to questions-YYYY-MM-DD.html, then fill PAGE and QUESTIONS in the script below
+  (and the <title> above); leave the rest alone. All text is escaped, so plain text only;
+  `backticks` become <code>.
   Rules:
   - Every question has its own 2 to 4 sentence explainer: what the thing is, where it
     lives, what the problem is, why it matters. The owner answers from this page alone.
   - Options carry a one-line trade-off. `rec` is the index of the recommended option; it
     arrives preselected (unticked reads as "no recommendation").
   - `multi: true` gives checkboxes; then `rec` is an array of preselected indexes.
-  - Answers autosave in the browser under PAGE.key. Once the owner starts answering, never
-    republish this page: new questions go on a new page with a new key.
+  - Answers autosave in the browser, keyed by this file's path, so every page file keeps its
+    own answers. Once the owner starts answering, never republish this page: new questions
+    go on a new page (a new file).
 -->
 <style>
 :root {
@@ -35,12 +38,13 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 180px; overflow-wrap: anywhere; }
+code { font-size: .9em; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
 h1 { font-size: 1.6rem; margin: 0 0 4px; }
 h2 { font-size: 1.1rem; margin: 32px 0 6px; color: var(--muted); font-weight: 600; }
 .sub, .intro, #progress { color: var(--muted); }
 .q { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 12px 0; }
-.q.answered { border-left: 4px solid var(--accent); }
+.q.changed { border-left: 4px solid var(--accent); }
 .head { display: flex; gap: 10px; align-items: baseline; font-size: .85rem; }
 .id { font-weight: 700; color: var(--accent); }
 .ctx { color: var(--muted); }
@@ -74,8 +78,8 @@ pre#out { white-space: pre-wrap; background: var(--card); border: 1px solid var(
 <script>
 // ---- Fill these ----------------------------------------------------------------------
 const PAGE = {
-  key: '{{SLUG}}-questions-{{DATE}}',          // unique per page, never reused
-  title: '{{PROJECT}} questions, {{DATE}}',
+  key: 'questions:' + location.pathname,        // per file; set a fixed unique string if hosted where paths repeat
+  title: 'PROJECT questions, YYYY-MM-DD',
   sub: 'Every question starts on my recommendation, so change only what you disagree with, add a note where useful, then copy the answers into the chat.',
 }
 const QUESTIONS = [
@@ -94,6 +98,9 @@ const QUESTIONS = [
 
 const $ = s => document.querySelector(s)
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const fmt = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>')
+// Recommended option indexes, ignoring any that are out of range.
+const recOf = q => [].concat(q.rec ?? []).filter(i => Number.isInteger(i) && i >= 0 && i < q.options.length)
 document.title = PAGE.title
 $('#page-title').textContent = PAGE.title
 $('#page-sub').textContent = PAGE.sub
@@ -105,13 +112,13 @@ $('#qs').innerHTML = QUESTIONS.map(q => {
   lastGroup = q.group || lastGroup
   const opts = q.options.map(([label, why], i) => `
       <label for="${q.id}-${i}"><input type="${type}" id="${q.id}-${i}" name="${q.id}" value="${esc(label)}">
-        <span>${esc(label)}${why ? `<br><span class="why">${esc(why)}</span>` : ''}</span></label>`).join('')
-  const recIdx = [].concat(q.rec ?? [])
-  const recText = recIdx.length ? `<p class="rec"><b>Recommendation:</b> ${recIdx.map(i => esc(q.options[i][0].split(' ')[0])).join(', ')}${q.recWhy ? '. ' + esc(q.recWhy) : ''}</p>` : ''
-  return `${head}<section class="q" data-id="${q.id}">
-    <div class="head"><span class="id">${q.id}</span><span class="ctx">${esc(q.topic || '')}</span></div>
-    <p class="title">${esc(q.title)}</p>
-    <p class="body">${esc(q.body)}</p>
+        <span>${fmt(label)}${why ? `<br><span class="why">${fmt(why)}</span>` : ''}</span></label>`).join('')
+  const recIdx = recOf(q)
+  const recText = recIdx.length ? `<p class="rec"><b>Recommendation:</b> ${recIdx.map(i => esc(q.options[i][0].split(' ')[0])).join(', ')}${q.recWhy ? '. ' + fmt(q.recWhy) : ''}</p>` : ''
+  return `${head}<section class="q" data-id="${esc(q.id)}">
+    <div class="head"><span class="id">${esc(q.id)}</span><span class="ctx">${esc(q.topic || '')}</span></div>
+    <p class="title">${fmt(q.title)}</p>
+    <p class="body">${fmt(q.body)}</p>
     ${recText}
     <div class="opts">${opts}</div>
     <textarea id="note-${q.id}" placeholder="Note (optional)"></textarea>
@@ -124,7 +131,7 @@ const byId = id => QUESTIONS.find(q => q.id === id)
 
 function setRecs() {
   cards.forEach(card => {
-    const recIdx = [].concat(byId(card.dataset.id).rec ?? [])
+    const recIdx = recOf(byId(card.dataset.id))
     card.querySelectorAll('input').forEach((input, i) => { input.checked = recIdx.includes(i) })
     card.querySelector('textarea').value = ''
   })
@@ -135,10 +142,10 @@ function save() {
   cards.forEach(card => {
     const note = card.querySelector('textarea').value
     state[card.dataset.id] = { picked: picked(card), note }
-    const recIdx = [].concat(byId(card.dataset.id).rec ?? [])
+    const recIdx = recOf(byId(card.dataset.id))
     const offRec = [...card.querySelectorAll('input')].some((input, i) => input.checked !== recIdx.includes(i))
     if (offRec || note.trim()) changed++
-    card.classList.toggle('answered', picked(card).length > 0)
+    card.classList.toggle('changed', offRec || !!note.trim())
   })
   $('#progress').textContent = `${cards.length} questions · ${changed} changed from the recommendation or with a note`
   try { localStorage.setItem(PAGE.key, JSON.stringify(state)) } catch {}
@@ -151,8 +158,10 @@ function load() {
     const saved = state[card.dataset.id]
     if (!saved) return
     const inputs = [...card.querySelectorAll('input')]
-    // A saved answer whose option text has since changed matches nothing: keep the recommendation.
-    if (saved.picked?.length && inputs.some(i => saved.picked.includes(i.value)))
+    // Apply the saved picks (an empty list too: "none of these" is an answer), unless an
+    // option's text has changed since, then keep the recommendation.
+    const values = inputs.map(i => i.value)
+    if (Array.isArray(saved.picked) && saved.picked.every(v => values.includes(v)))
       inputs.forEach(i => { i.checked = saved.picked.includes(i.value) })
     card.querySelector('textarea').value = saved.note || ''
   })
@@ -160,7 +169,10 @@ function load() {
 }
 document.addEventListener('input', save)
 document.addEventListener('change', save)
-$('#reset').onclick = () => { setRecs(); save(); $('#status').textContent = 'Back to the recommendations.' }
+$('#reset').onclick = () => {
+  if (!confirm('Go back to the recommendations? This clears all your picks and notes on this page.')) return
+  setRecs(); save(); $('#status').textContent = 'Back to the recommendations.'
+}
 $('#copy').onclick = () => {
   const text = cards.map(card => {
     const note = card.querySelector('textarea').value.trim()
@@ -169,6 +181,7 @@ $('#copy').onclick = () => {
   const out = $('#out'), status = $('#status')
   out.textContent = text; out.hidden = false
   const fallback = () => {
+    out.scrollIntoView({ block: 'center' })
     const range = document.createRange(); range.selectNodeContents(out)
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range)
     status.textContent = 'Clipboard blocked; the text below is selected, copy it.'

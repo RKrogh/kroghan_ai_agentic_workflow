@@ -1,0 +1,23 @@
+# Pull request CI that skips drafts and runs once when the PR is marked ready.
+# Not installed automatically: merge these keys into your own workflow.
+name: ci
+
+on:
+  pull_request:
+    # The default types do not include ready_for_review: without it, `gh pr ready`
+    # starts nothing and the PR shows only skipped draft runs.
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  # The draft state is part of the key, so a skipped draft run cannot cancel the
+  # real run that starts on ready.
+  group: ci-${{ github.event.pull_request.number }}-${{ github.event.pull_request.draft }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # your restore / build / test steps

@@ -13,17 +13,19 @@ Gather (ask only what you cannot infer from the folder):
 - The owner's name as it should appear in instructions (default: "the owner").
 - Code repos: names, and whether they exist already.
 - GitHub owner for the planning repo (private).
-- Standing merge permission for agents on APPROVE plus green CI: yes or no. Record it as
-  the first answered Q-id.
+- Standing merge permission for agents on APPROVE plus green CI: yes, no, or ask later.
+  The installer records it as Q-01 (answered for yes/no, open for ask).
 
 ## 2. Scaffold
 
-Run the kit's installer (in this plugin's root: `install.sh`; read it first, it only writes
-files that do not exist yet):
+Run the kit's installer, `install.sh` in the kit root. When this skill loads, its base
+directory is shown; the kit root is two folders up from it. If `install.sh` is not there
+(skills copied with `--local-skills`), ask the owner where their clone of the kit is. Read
+the script first; it only writes files that do not exist yet:
 
 ```bash
 <kit>/install.sh --name "<Project>" --slug <slug> --owner "<Owner>" \
-  --dir <umbrella> --repos "<slug>,<slug>-web" [--merge yes|no]
+  --dir <umbrella> --repos "<slug>,<slug>-web" --merge yes|no|ask --dry-run   # then without --dry-run
 ```
 
 It creates, without overwriting anything:
@@ -33,9 +35,11 @@ It creates, without overwriting anything:
 - In each code repo: `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.github/` issue and PR
   templates, `docs/adr/0000-template.md`, `docs/map/README.md`
 
-Then, with the owner's go: create the private planning repo on GitHub
-(`gh repo create <owner>/<slug>-planning --private --source <planning> --push`), and the
-labels `found-by-agent`, `follow-up`, `qa` in each code repo (`gh label create`).
+The installer ends with numbered next steps. With the owner's go, run them: the private
+planning repo on GitHub, a first commit and a GitHub repo for each code repo it created
+(agents branch from `origin/main`, so a repo without a remote blocks every lane), the labels
+(`found-by-agent`, `follow-up`, `qa`, `security`, `tech-debt`) in each code repo, and CI
+that skips drafts and runs on ready (`template/snippets/ci-draft-gate.yml` in the kit).
 
 ## 3. Fill the base plate
 

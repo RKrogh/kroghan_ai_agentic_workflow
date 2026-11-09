@@ -18,7 +18,8 @@ file (Claude Code via a one-line `CLAUDE.md` that says `@AGENTS.md`).
 CI minutes cost money, so CI runs once per reviewed change, not on every push:
 
 - Open the PR as a **draft** (`gh pr create --draft`). CI skips drafts, so push as often as
-  you like.
+  you like. (CI must trigger on `ready_for_review` and skip drafts; see "CI that runs once"
+  in the planning repo's WORKFLOW.md.)
 - Before asking for review, run the same checks locally. Say in the PR what you ran.
 - After the independent review approves, mark the PR ready (`gh pr ready`). That starts the
   one CI run the merge waits for.
@@ -77,7 +78,9 @@ issue before finishing:
 
 - Verify it on current `main` and search first
   (`gh issue list --state all --search "<keywords>"`).
-- Use the bug template: Summary, Where (file:line links), Reproduce, Expected, Actual,
-  Impact, Suggested fix.
-- Label `found-by-agent` plus what fits (`bug`, `security`, `documentation`, `tech-debt`).
+- Write the body with the bug template's headings: Summary, Where (file:line links),
+  Reproduce, Expected, Actual, Impact, Suggested fix. (The issue forms only work in the
+  browser; from the CLI use `gh issue create --title ... --body-file ... --label ...`.)
+- Labels, passed explicitly: `found-by-agent` plus what fits (`bug`, `security`,
+  `documentation`, `tech-debt`, `follow-up`, `qa`).
 - Mention the issue in your report and next to the BACKLOG item it relates to.

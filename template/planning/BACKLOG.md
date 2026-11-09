@@ -1,5 +1,5 @@
 ---
-title: {{PROJECT}} backlog (human + agent tracks)
+title: "{{PROJECT_YAML}} backlog (human + agent tracks)"
 tags: [{{SLUG}}, backlog, planning]
 date: {{DATE}}
 status: active
@@ -14,11 +14,11 @@ the bug tracker. Edit it in small, targeted pieces: several agents edit it at on
 
 | Repo | State | Summary |
 |---|---|---|
-| **{{SLUG}}** | | |
+{{REPO_STATE_ROWS}}
 
 **Strategy:** <!-- the few decisions that shape everything; one line each, with the date -->
 
-**Critical path:** <!-- step → step → step to the first real milestone -->
+**Critical path:** <!-- step, then step, then step to the first real milestone -->
 
 ---
 
@@ -30,8 +30,8 @@ answer in the owner's words. Prune old answered ones into the git history now an
 {{MERGE_Q}}
 
 <!-- Format:
-  [ ] Q-NN (asked {{DATE}}, page: questions-{{DATE}}.html) The question in one line. Options (a) ..., (b) .... Recommendation: (a).
-  [x] Q-NN (answered {{DATE}}: b; owner: "their words") The question.
+  [ ] Q-NN (asked YYYY-MM-DD, page: questions-YYYY-MM-DD.html) The question in one line. Options (a) ..., (b) .... Recommendation: (a).
+  [x] Q-NN (answered YYYY-MM-DD: b; owner: "their words") The question.
 -->
 
 ## Milestones
@@ -43,7 +43,7 @@ answer in the owner's words. Prune old answered ones into the git history now an
 
 ## Track H: Human ({{OWNER}})
 
-Things only a person with a wallet, a signature, an account or a native tongue can do.
+Things only a person can do: pay, sign, own an account, talk to people.
 Sorted by how much they block. `_(blocks M1)_` marks the gate.
 
 ### Blockers (do first)
@@ -58,7 +58,7 @@ Sorted by how much they block. `_(blocks M1)_` marks the gate.
 
 Each lane runs in its own **git worktree** and touches its own files, so several can run at
 once without merge fights. `⛔ Hx` means the item waits on a human item. Done items keep a
-short note: `(done {{DATE}}, PR repo#N: what it turned out to be)`.
+short note: `(done YYYY-MM-DD, PR repo#N: what it turned out to be)`.
 
 ### Lane O: Ops, deploy and CI
 - [ ] **A-O1**

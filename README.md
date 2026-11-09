@@ -71,9 +71,9 @@ phase is what makes the later autonomous runs work. After that: "what should we 
   Cloud sessions instead need the Claude GitHub App installed on your repos. See
   "GitHub is the workbench" in WORKFLOW.md.
 - GitHub repos for the code and a private one for planning.
-- CI that skips draft PRs (so pushes are free and CI runs once per reviewed change). The
-  template `AGENTS.md` assumes it; add `if: github.event.pull_request.draft == false` to
-  your PR jobs.
+- CI that skips draft PRs and runs when a PR is marked ready, so pushes are free and CI
+  runs once per reviewed change. Both halves matter: see "CI that runs once" in
+  WORKFLOW.md and `template/snippets/ci-draft-gate.yml`.
 
 ## Optional: a personal knowledge base
 
@@ -115,6 +115,7 @@ here.
 agents/                implementer.md, reviewer.md
 skills/                one folder per skill
 template/              files install.sh copies into a project
+  snippets/            CI snippet (not installed; merge into your workflow)
   CLAUDE.md            umbrella lead instructions
   AGENTS.md            per code repo rules
   planning/            BACKLOG, NEXT-SESSION, README, pages/

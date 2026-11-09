@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{PROJECT}} QA, {{DATE}}</title>
+<title>PROJECT QA, YYYY-MM-DD</title>
 <!--
   QA checklist template (agent-workflow-kit).
-  Fill PAGE, SETUP, NOT_BUILT and AREAS in the script below.
+  Copy to qa-YYYY-MM-DD.html, then fill PAGE, SETUP, NOT_BUILT and AREAS in the script
+  below (and the <title> above). All text is escaped, so write plain text; `backticks`
+  become <code>. Area keys (k) must be unique.
   Rules:
   - One line per thing to try: a concrete action, then what you should see.
   - Setup commands the owner copies go in SETUP or an area's intro.
   - NOT_BUILT lists known gaps so they are not filed as bugs.
-  - Marks autosave under PAGE.key. Never republish once the owner has started marking;
-    a retest goes on a new page. Claude reads the exported text back and files issues.
+  - Marks autosave in the browser, keyed by this file's path. Never republish once the
+    owner has started marking; a retest goes on a new page (a new file). Claude reads the
+    exported text back and files issues.
 -->
 <style>
 :root {
@@ -33,7 +36,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; }
+main { max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; overflow-wrap: anywhere; }
 h1 { font-size: 1.6rem; margin: 0 0 4px; }
 h2 { font-size: 1.15rem; margin: 28px 0 6px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .lede, .intro, .tally, .expect { color: var(--muted); }
@@ -72,12 +75,11 @@ pre#out { white-space: pre-wrap; background: var(--card); border: 1px solid var(
 <script>
 // ---- Fill these ------------------------------------------------------------------------
 const PAGE = {
-  key: '{{SLUG}}-qa-{{DATE}}',                 // unique per page, never reused
-  title: '{{PROJECT}} QA, {{DATE}}',
+  key: 'qa:' + location.pathname,               // per file; set a fixed unique string if hosted where paths repeat
+  title: 'PROJECT QA, YYYY-MM-DD',
   lede: 'Mark each line Pass, Fail or Skip and write what you saw in the note. Your marks save as you go, and Claude reads them afterwards to file issues.',
 }
-// HTML allowed in SETUP, intros and NOT_BUILT (you write them); item text too, for <code>.
-const SETUP = ['Start the stack: <code>./qa/dev-up.sh</code>, then open <code>http://localhost:3000</code>.']
+const SETUP = ['Start the stack: `./qa/dev-up.sh`, then open `http://localhost:3000`.']
 const NOT_BUILT = ['Example: the export button is a placeholder.']
 const AREAS = [
   { k: 'SIGNUP', t: 'Sign-up', intro: 'Use a fresh email address.', items: [
@@ -87,19 +89,21 @@ const AREAS = [
 // -----------------------------------------------------------------------------------------
 
 const $ = s => document.querySelector(s)
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const fmt = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>')
 document.title = PAGE.title
 $('#page-title').textContent = PAGE.title
 $('#page-lede').textContent = PAGE.lede
-$('#setup').innerHTML = SETUP.length ? `<div class="panel"><b>Setup</b><ul>${SETUP.map(s => `<li>${s}</li>`).join('')}</ul></div>` : ''
-$('#not-built').innerHTML = NOT_BUILT.map(s => `<li>${s}</li>`).join('')
+$('#setup').innerHTML = SETUP.length ? `<div class="panel"><b>Setup</b><ul>${SETUP.map(s => `<li>${fmt(s)}</li>`).join('')}</ul></div>` : ''
+$('#not-built').innerHTML = NOT_BUILT.map(s => `<li>${fmt(s)}</li>`).join('')
 $('#areas').innerHTML = AREAS.map(a => `
-  <section data-area="${a.k}">
-    <h2>${a.t} <span class="tally" data-tally="${a.k}"></span></h2>
-    ${a.intro ? `<p class="intro">${a.intro}</p>` : ''}
+  <section data-area="${esc(a.k)}">
+    <h2>${esc(a.t)} <span class="tally" data-tally="${esc(a.k)}"></span></h2>
+    ${a.intro ? `<p class="intro">${fmt(a.intro)}</p>` : ''}
     <ul class="items">${a.items.map(([what, expect], i) => {
-      const id = `${a.k}-${i + 1}`
-      return `<li class="item" data-id="${id}" data-s="">
-        <span class="iid">${id}</span> ${what}<div class="expect">Expect: ${expect}</div>
+      const id = esc(`${a.k}-${i + 1}`)
+      return `<li class="item" data-id="${id}" data-area="${esc(a.k)}" data-s="">
+        <span class="iid">${id}</span> ${fmt(what)}<div class="expect">Expect: ${fmt(expect)}</div>
         <div class="marks">${['pass', 'fail', 'skip'].map(m => `<button type="button" data-m="${m}" aria-pressed="false">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>
         <textarea placeholder="What you saw (optional)"></textarea></li>`
     }).join('')}</ul>
@@ -110,9 +114,10 @@ function save() {
   const state = {}
   items.forEach(li => { state[li.dataset.id] = { s: li.dataset.s, note: li.querySelector('textarea').value } })
   AREAS.forEach(a => {
-    const mine = items.filter(li => li.dataset.id.startsWith(a.k + '-'))
+    const mine = items.filter(li => li.dataset.area === a.k)
     const n = s => mine.filter(li => li.dataset.s === s).length
-    $(`[data-tally="${a.k}"]`).textContent = `${n('pass')} pass · ${n('fail')} fail · ${n('skip')} skip · ${mine.length - n('pass') - n('fail') - n('skip')} open`
+    const tally = [...document.querySelectorAll('[data-tally]')].find(el => el.dataset.tally === a.k)
+    if (tally) tally.textContent = `${n('pass')} pass · ${n('fail')} fail · ${n('skip')} skip · ${mine.length - n('pass') - n('fail') - n('skip')} open`
   })
   try { localStorage.setItem(PAGE.key, JSON.stringify(state)) } catch {}
 }
@@ -143,6 +148,7 @@ $('#export').onclick = () => {
   const out = $('#out'), status = $('#status')
   out.textContent = text; out.hidden = false
   const fallback = () => {
+    out.scrollIntoView({ block: 'center' })
     const range = document.createRange(); range.selectNodeContents(out)
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range)
     status.textContent = 'Clipboard blocked; the text below is selected, copy it.'

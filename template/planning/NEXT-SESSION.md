@@ -1,5 +1,5 @@
 ---
-title: {{PROJECT}} next-session agenda (temp)
+title: "{{PROJECT_YAML}} next-session agenda (temp)"
 tags: [{{SLUG}}, planning, temp]
 date: {{DATE}}
 status: temp

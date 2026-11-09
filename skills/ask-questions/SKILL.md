@@ -19,9 +19,9 @@ One or two simple questions can go straight in chat, still with ids.
 
 ## The page
 
-Copy `pages/questions-template.html` from the planning repo (if missing, it is in this
-plugin at `template/planning/pages/`) to `<planning>/questions-YYYY-MM-DD.html` (add a
-letter for a second page that day). Fill `PAGE` and `QUESTIONS`:
+Copy `pages/questions-template.html` from the planning repo (if it is missing there, it is
+in the kit at `template/planning/pages/`: two folders up from this skill's base directory) to `<planning>/questions-YYYY-MM-DD.html` (add a
+letter for a second page that day). Fill the `<title>`, `PAGE` and `QUESTIONS` (plain text; `backticks` become code):
 
 - **Explainer per question, 2 to 4 sentences:** what the thing is, where it lives, what the
   problem is, why it matters to the owner. A page with only titles and options leaves
@@ -32,7 +32,6 @@ letter for a second page that day). Fill `PAGE` and `QUESTIONS`:
 - **A note field on every question** (the template adds it). Tell the owner to use it:
   conditions and "yes, but" thoughts often carry the real decision.
 - Group by topic; put the one that unblocks building first.
-- A new, unique `PAGE.key`.
 
 Publish it (an Artifact page if available, otherwise tell the owner the file path to open)
 and say plainly: **"Stable, start answering."**
