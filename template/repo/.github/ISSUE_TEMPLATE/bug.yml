@@ -1,0 +1,61 @@
+name: Bug or finding
+description: A defect, security gap or drift found in the code, docs or ops. Agents use this for anything discovered outside their task.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Verify against current `main` before filing, and search existing issues first
+        (`gh issue list --state all --search "<keywords>"`). Agents: add the `found-by-agent` label.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is wrong, in two or three sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: file:line links on main, plus the ADR if one describes it.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: Concrete steps, a curl, or a test sketch.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Impact / severity
+      options:
+        - High (data, money or security at risk; blocks launch)
+        - Medium (wrong behavior users or operators will hit)
+        - Low (housekeeping, docs, latent)
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+  - type: input
+    id: backlog
+    attributes:
+      label: Backlog reference
+      description: The BACKLOG id this relates to (A-P12, Q-40), if any.

@@ -1,0 +1,7 @@
+{
+  "name": "agent-workflow",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Owner + lead-session workflow: planning repo with Q-ids and H/A tracks, parallel implementer lanes, an independent review gate, autosaving question and QA pages, and clean session hand-offs.",
+  "keywords": ["workflow", "planning", "multi-agent", "review", "qa"]
+}

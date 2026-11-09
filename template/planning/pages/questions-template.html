@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PROJECT}} questions, {{DATE}}</title>
+<!--
+  Question page template (agent-workflow-kit).
+  Fill PAGE and QUESTIONS in the script below; leave the rest alone.
+  Rules:
+  - Every question has its own 2 to 4 sentence explainer: what the thing is, where it
+    lives, what the problem is, why it matters. The owner answers from this page alone.
+  - Options carry a one-line trade-off. `rec` is the index of the recommended option; it
+    arrives preselected (unticked reads as "no recommendation").
+  - `multi: true` gives checkboxes; then `rec` is an array of preselected indexes.
+  - Answers autosave in the browser under PAGE.key. Once the owner starts answering, never
+    republish this page: new questions go on a new page with a new key.
+-->
+<style>
+:root {
+  --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #66665f;
+  --border: #deded8; --accent: #2f6f5e; --accent-soft: #e3efe9; --rec: #8a5a00; --rec-soft: #fbf1dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --card: #1f1f1d; --text: #ecece7; --muted: #a3a39b;
+    --border: #34342f; --accent: #7cc4ad; --accent-soft: #1e3029; --rec: #e6b563; --rec-soft: #33291a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --card: #1f1f1d; --text: #ecece7; --muted: #a3a39b;
+  --border: #34342f; --accent: #7cc4ad; --accent-soft: #1e3029; --rec: #e6b563; --rec-soft: #33291a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 32px 0 6px; color: var(--muted); font-weight: 600; }
+.sub, .intro, #progress { color: var(--muted); }
+.q { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 12px 0; }
+.q.answered { border-left: 4px solid var(--accent); }
+.head { display: flex; gap: 10px; align-items: baseline; font-size: .85rem; }
+.id { font-weight: 700; color: var(--accent); }
+.ctx { color: var(--muted); }
+.title { font-weight: 650; margin: 6px 0; }
+.body { margin: 6px 0 10px; }
+.rec { background: var(--rec-soft); color: var(--rec); border-radius: 6px; padding: 6px 10px; margin: 8px 0; font-size: .92rem; }
+.opts label { display: flex; gap: 8px; align-items: flex-start; padding: 6px 4px; cursor: pointer; }
+.opts input { margin-top: 5px; flex: none; }
+.opts .why { color: var(--muted); font-size: .9rem; }
+textarea { width: 100%; min-height: 3em; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 12px 16px; background: var(--card); border-top: 1px solid var(--border); }
+button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--card); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+#status { color: var(--muted); font-size: .9rem; }
+pre#out { white-space: pre-wrap; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="page-title"></h1>
+  <p class="sub" id="page-sub"></p>
+  <p id="progress"></p>
+  <div id="qs"></div>
+  <pre id="out" hidden></pre>
+</main>
+<div class="bar">
+  <button id="copy" type="button">Copy answers</button>
+  <button id="reset" type="button" class="ghost">Back to recommendations</button>
+  <span id="status" role="status"></span>
+</div>
+<script>
+// ---- Fill these ----------------------------------------------------------------------
+const PAGE = {
+  key: '{{SLUG}}-questions-{{DATE}}',          // unique per page, never reused
+  title: '{{PROJECT}} questions, {{DATE}}',
+  sub: 'Every question starts on my recommendation, so change only what you disagree with, add a note where useful, then copy the answers into the chat.',
+}
+const QUESTIONS = [
+  {
+    id: 'Q-01', topic: 'Example topic', group: 'Building',
+    title: 'The question as one plain sentence?',
+    body: 'What the thing is and where it lives. What the problem is. Why it matters to you, and what happens if we do nothing.',
+    options: [
+      ['(a) First option', 'one-line trade-off'],
+      ['(b) Second option', 'one-line trade-off'],
+    ],
+    rec: 0, recWhy: 'why (a), in one sentence',
+  },
+]
+// ---------------------------------------------------------------------------------------
+
+const $ = s => document.querySelector(s)
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+document.title = PAGE.title
+$('#page-title').textContent = PAGE.title
+$('#page-sub').textContent = PAGE.sub
+
+let lastGroup = null
+$('#qs').innerHTML = QUESTIONS.map(q => {
+  const type = q.multi ? 'checkbox' : 'radio'
+  const head = q.group && q.group !== lastGroup ? `<h2>${esc(q.group)}</h2>` : ''
+  lastGroup = q.group || lastGroup
+  const opts = q.options.map(([label, why], i) => `
+      <label for="${q.id}-${i}"><input type="${type}" id="${q.id}-${i}" name="${q.id}" value="${esc(label)}">
+        <span>${esc(label)}${why ? `<br><span class="why">${esc(why)}</span>` : ''}</span></label>`).join('')
+  const recIdx = [].concat(q.rec ?? [])
+  const recText = recIdx.length ? `<p class="rec"><b>Recommendation:</b> ${recIdx.map(i => esc(q.options[i][0].split(' ')[0])).join(', ')}${q.recWhy ? '. ' + esc(q.recWhy) : ''}</p>` : ''
+  return `${head}<section class="q" data-id="${q.id}">
+    <div class="head"><span class="id">${q.id}</span><span class="ctx">${esc(q.topic || '')}</span></div>
+    <p class="title">${esc(q.title)}</p>
+    <p class="body">${esc(q.body)}</p>
+    ${recText}
+    <div class="opts">${opts}</div>
+    <textarea id="note-${q.id}" placeholder="Note (optional)"></textarea>
+  </section>`
+}).join('')
+
+const cards = [...document.querySelectorAll('.q')]
+const picked = card => [...card.querySelectorAll('input:checked')].map(i => i.value)
+const byId = id => QUESTIONS.find(q => q.id === id)
+
+function setRecs() {
+  cards.forEach(card => {
+    const recIdx = [].concat(byId(card.dataset.id).rec ?? [])
+    card.querySelectorAll('input').forEach((input, i) => { input.checked = recIdx.includes(i) })
+    card.querySelector('textarea').value = ''
+  })
+}
+function save() {
+  const state = {}
+  let changed = 0
+  cards.forEach(card => {
+    const note = card.querySelector('textarea').value
+    state[card.dataset.id] = { picked: picked(card), note }
+    const recIdx = [].concat(byId(card.dataset.id).rec ?? [])
+    const offRec = [...card.querySelectorAll('input')].some((input, i) => input.checked !== recIdx.includes(i))
+    if (offRec || note.trim()) changed++
+    card.classList.toggle('answered', picked(card).length > 0)
+  })
+  $('#progress').textContent = `${cards.length} questions · ${changed} changed from the recommendation or with a note`
+  try { localStorage.setItem(PAGE.key, JSON.stringify(state)) } catch {}
+}
+function load() {
+  let state = {}
+  try { state = JSON.parse(localStorage.getItem(PAGE.key) || '{}') || {} } catch {}
+  setRecs()
+  cards.forEach(card => {
+    const saved = state[card.dataset.id]
+    if (!saved) return
+    const inputs = [...card.querySelectorAll('input')]
+    // A saved answer whose option text has since changed matches nothing: keep the recommendation.
+    if (saved.picked?.length && inputs.some(i => saved.picked.includes(i.value)))
+      inputs.forEach(i => { i.checked = saved.picked.includes(i.value) })
+    card.querySelector('textarea').value = saved.note || ''
+  })
+  save()
+}
+document.addEventListener('input', save)
+document.addEventListener('change', save)
+$('#reset').onclick = () => { setRecs(); save(); $('#status').textContent = 'Back to the recommendations.' }
+$('#copy').onclick = () => {
+  const text = cards.map(card => {
+    const note = card.querySelector('textarea').value.trim()
+    return `${card.dataset.id}: ${picked(card).join(', ') || '(no answer)'}${note ? ' | ' + note : ''}`
+  }).join('\n')
+  const out = $('#out'), status = $('#status')
+  out.textContent = text; out.hidden = false
+  const fallback = () => {
+    const range = document.createRange(); range.selectNodeContents(out)
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range)
+    status.textContent = 'Clipboard blocked; the text below is selected, copy it.'
+  }
+  try { navigator.clipboard.writeText(text).then(() => { status.textContent = 'Copied. Paste into the chat.' }, fallback) }
+  catch { fallback() }
+}
+load()
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+name: Follow-up task
+description: Unfinished or follow-up work a session leaves behind, so any later session (local or cloud) can pick it up.
+labels: ["follow-up"]
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: Why this exists.
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: The outcome when done.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Constraints, guardrails, dependencies, open Q-ids.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable "done" conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context so far
+      description: What the last session found or tried, with links (PRs, files, pages).

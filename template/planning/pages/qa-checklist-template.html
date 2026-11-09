@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PROJECT}} QA, {{DATE}}</title>
+<!--
+  QA checklist template (agent-workflow-kit).
+  Fill PAGE, SETUP, NOT_BUILT and AREAS in the script below.
+  Rules:
+  - One line per thing to try: a concrete action, then what you should see.
+  - Setup commands the owner copies go in SETUP or an area's intro.
+  - NOT_BUILT lists known gaps so they are not filed as bugs.
+  - Marks autosave under PAGE.key. Never republish once the owner has started marking;
+    a retest goes on a new page. Claude reads the exported text back and files issues.
+-->
+<style>
+:root {
+  --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #66665f; --border: #deded8;
+  --pass: #1f7a46; --pass-soft: #dff3e6; --fail: #b3261e; --fail-soft: #fbe3e1; --skip: #7a6a1f; --skip-soft: #f5efd6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --card: #1f1f1d; --text: #ecece7; --muted: #a3a39b; --border: #34342f;
+    --pass: #5fd08f; --pass-soft: #173323; --fail: #ff8a80; --fail-soft: #3a1a18; --skip: #d9c26a; --skip-soft: #332d14;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --card: #1f1f1d; --text: #ecece7; --muted: #a3a39b; --border: #34342f;
+  --pass: #5fd08f; --pass-soft: #173323; --fail: #ff8a80; --fail-soft: #3a1a18; --skip: #d9c26a; --skip-soft: #332d14;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.15rem; margin: 28px 0 6px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.lede, .intro, .tally, .expect { color: var(--muted); }
+.tally { font-size: .85rem; font-weight: 400; }
+code { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: .9em; overflow-wrap: anywhere; }
+ul.items { list-style: none; padding: 0; margin: 0; }
+li.item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 8px 0; }
+li.item[data-s="pass"] { background: linear-gradient(90deg, var(--pass-soft), var(--card) 40%); }
+li.item[data-s="fail"] { background: linear-gradient(90deg, var(--fail-soft), var(--card) 55%); }
+li.item[data-s="skip"] { background: linear-gradient(90deg, var(--skip-soft), var(--card) 40%); }
+.iid { font-weight: 700; font-size: .8rem; color: var(--muted); }
+.marks { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.marks button { font: inherit; font-size: .9rem; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+.marks button[aria-pressed="true"][data-m="pass"] { background: var(--pass-soft); border-color: var(--pass); color: var(--pass); }
+.marks button[aria-pressed="true"][data-m="fail"] { background: var(--fail-soft); border-color: var(--fail); color: var(--fail); }
+.marks button[aria-pressed="true"][data-m="skip"] { background: var(--skip-soft); border-color: var(--skip); color: var(--skip); }
+textarea { width: 100%; min-height: 2.6em; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+button.main { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--pass); background: var(--pass); color: var(--card); cursor: pointer; }
+pre#out { white-space: pre-wrap; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="page-title"></h1>
+  <p class="lede" id="page-lede"></p>
+  <div id="setup"></div>
+  <div id="areas"></div>
+  <h2>Not built yet, don't file these</h2>
+  <ul id="not-built"></ul>
+  <h2>Results as text</h2>
+  <p class="lede">Copy this into the chat when you are done (or part way).</p>
+  <button class="main" id="export" type="button">Copy results</button> <span id="status" role="status"></span>
+  <pre id="out" hidden></pre>
+</main>
+<script>
+// ---- Fill these ------------------------------------------------------------------------
+const PAGE = {
+  key: '{{SLUG}}-qa-{{DATE}}',                 // unique per page, never reused
+  title: '{{PROJECT}} QA, {{DATE}}',
+  lede: 'Mark each line Pass, Fail or Skip and write what you saw in the note. Your marks save as you go, and Claude reads them afterwards to file issues.',
+}
+// HTML allowed in SETUP, intros and NOT_BUILT (you write them); item text too, for <code>.
+const SETUP = ['Start the stack: <code>./qa/dev-up.sh</code>, then open <code>http://localhost:3000</code>.']
+const NOT_BUILT = ['Example: the export button is a placeholder.']
+const AREAS = [
+  { k: 'SIGNUP', t: 'Sign-up', intro: 'Use a fresh email address.', items: [
+    ['Sign up with a new address.', 'You land on the empty dashboard with a welcome note.'],
+  ]},
+]
+// -----------------------------------------------------------------------------------------
+
+const $ = s => document.querySelector(s)
+document.title = PAGE.title
+$('#page-title').textContent = PAGE.title
+$('#page-lede').textContent = PAGE.lede
+$('#setup').innerHTML = SETUP.length ? `<div class="panel"><b>Setup</b><ul>${SETUP.map(s => `<li>${s}</li>`).join('')}</ul></div>` : ''
+$('#not-built').innerHTML = NOT_BUILT.map(s => `<li>${s}</li>`).join('')
+$('#areas').innerHTML = AREAS.map(a => `
+  <section data-area="${a.k}">
+    <h2>${a.t} <span class="tally" data-tally="${a.k}"></span></h2>
+    ${a.intro ? `<p class="intro">${a.intro}</p>` : ''}
+    <ul class="items">${a.items.map(([what, expect], i) => {
+      const id = `${a.k}-${i + 1}`
+      return `<li class="item" data-id="${id}" data-s="">
+        <span class="iid">${id}</span> ${what}<div class="expect">Expect: ${expect}</div>
+        <div class="marks">${['pass', 'fail', 'skip'].map(m => `<button type="button" data-m="${m}" aria-pressed="false">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>
+        <textarea placeholder="What you saw (optional)"></textarea></li>`
+    }).join('')}</ul>
+  </section>`).join('')
+
+const items = [...document.querySelectorAll('li.item')]
+function save() {
+  const state = {}
+  items.forEach(li => { state[li.dataset.id] = { s: li.dataset.s, note: li.querySelector('textarea').value } })
+  AREAS.forEach(a => {
+    const mine = items.filter(li => li.dataset.id.startsWith(a.k + '-'))
+    const n = s => mine.filter(li => li.dataset.s === s).length
+    $(`[data-tally="${a.k}"]`).textContent = `${n('pass')} pass · ${n('fail')} fail · ${n('skip')} skip · ${mine.length - n('pass') - n('fail') - n('skip')} open`
+  })
+  try { localStorage.setItem(PAGE.key, JSON.stringify(state)) } catch {}
+}
+function setMark(li, m) {
+  li.dataset.s = li.dataset.s === m ? '' : m
+  li.querySelectorAll('.marks button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === li.dataset.s)))
+}
+function load() {
+  let state = {}
+  try { state = JSON.parse(localStorage.getItem(PAGE.key) || '{}') || {} } catch {}
+  items.forEach(li => {
+    const v = state[li.dataset.id]; if (!v) return
+    if (v.s) setMark(li, v.s)
+    li.querySelector('textarea').value = v.note || ''
+  })
+  save()
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.marks button'); if (!b) return
+  setMark(b.closest('li.item'), b.dataset.m); save()
+})
+document.addEventListener('input', save)
+$('#export').onclick = () => {
+  const text = items.filter(li => li.dataset.s || li.querySelector('textarea').value.trim()).map(li => {
+    const note = li.querySelector('textarea').value.trim()
+    return `${li.dataset.id}: ${(li.dataset.s || 'open').toUpperCase()}${note ? ' | ' + note : ''}`
+  }).join('\n') || '(nothing marked yet)'
+  const out = $('#out'), status = $('#status')
+  out.textContent = text; out.hidden = false
+  const fallback = () => {
+    const range = document.createRange(); range.selectNodeContents(out)
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range)
+    status.textContent = 'Clipboard blocked; the text below is selected, copy it.'
+  }
+  try { navigator.clipboard.writeText(text).then(() => { status.textContent = 'Copied. Paste into the chat.' }, fallback) }
+  catch { fallback() }
+}
+load()
+</script>
+</body>
+</html>

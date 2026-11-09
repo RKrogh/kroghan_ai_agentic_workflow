@@ -1,0 +1,11 @@
+{
+  "name": "agent-workflow-kit",
+  "owner": { "name": "agent-workflow-kit maintainers" },
+  "plugins": [
+    {
+      "name": "agent-workflow",
+      "source": "./",
+      "description": "Owner + lead-session workflow: planning repo, parallel lanes, independent review gate, question and QA hand-off pages."
+    }
+  ]
+}
