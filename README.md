@@ -38,7 +38,8 @@ From a clone (or this folder) on your machine, inside Claude Code:
 /plugin install agent-workflow@agent-workflow-kit
 ```
 
-From GitHub once the repo is pushed: `/plugin marketplace add <github-owner>/agent-workflow-kit`.
+From GitHub: `/plugin marketplace add RKrogh/kroghan_ai_agentic_workflow` (or your fork),
+then `/plugin install agent-workflow@agent-workflow-kit` as above.
 
 Skills then show up as `agent-workflow:session-start`, `agent-workflow:run-lanes`,
 `agent-workflow:ask-questions`, `agent-workflow:qa-handoff`,
